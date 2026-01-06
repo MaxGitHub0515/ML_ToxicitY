@@ -23,7 +23,9 @@ export const createComment = async (req, res) => {
     }
 };
 
-// run the app.py  - uvicorn app:app --reload
+// run the app.py  - 
+// active the venv - source venv/bin/activate
+// uvicorn app:app --reload
 
 /* testing - open up 2 separate terminals one running the app.py another sending json data!
 curl -X POST "http://127.0.0.1:8000/predict" \
