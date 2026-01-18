@@ -24,7 +24,7 @@ try:
     print("Model loaded successfully!")
 
 except Exception as e:
-    print("CRITICAL ERROR: Could not load model. {e}")
+    print(f"CRITICAL ERROR: Could not load model. {e}")
     print("Did you unzip 'toxicity_model.zip' into the same folder as app.py?")
     classifier = None
 
@@ -37,23 +37,33 @@ def home():
     
 @app.post("/predict")
 def predict(request: CommentRequest):
+    # Defensive: handle missing/empty text without calling the model
+    text = (request.text or "").strip()
+    if len(text) == 0:
+        empty_scores = {label: 0.0 for label in TOXICITY_LABELS}
+        empty_scores["non_toxic"] = 1.0
+        return {"is_toxic": False, "detailed_scores": empty_scores}
+
     if not classifier:
+        # Keep API stable but avoid exceptions; upstream may choose to treat as toxic
         return {"error": "Model failed to initialize. Check server logs."}
-    # RUN THE AI
-    # multi_label=True means a comment can be BOTH an 'insult' and a 'threat'.
-    output = classifier(request.text, candidate_labels=TOXICITY_LABELS, multi_label=True)
 
-    # PROCESS RESULTS
-    # The output comes as two lists: ['insult', 'threat'] and [0.99, 0.01].
-    # We zip them into a clean dictionary: {'insult': 0.99, 'threat': 0.01 ...}
-    scores = {label: round(score, 4) for label, score in zip(output['labels'], output['scores'])}
+    try:
+        # RUN THE AI
+        # multi_label=True means a comment can be BOTH an 'insult' and a 'threat'.
+        output = classifier(text, candidate_labels=TOXICITY_LABELS, multi_label=True)
 
-    # DECISION LOGIC
-    # 1. It is toxic if the 'non_toxic' score is too low (less than 50% confidence)
-    # 2. OR if any dangerous flag (threat/hate_speech) is extremely high (> 90%)
-    is_safe = scores['non_toxic'] > 0.5
-    
-    return {
-        "is_toxic": not is_safe,
-        "detailed_scores": scores
-    }
+        # PROCESS RESULTS
+        # The output comes as two lists: ['insult', 'threat'] and [0.99, 0.01].
+        # We zip them into a clean dictionary: {'insult': 0.99, 'threat': 0.01 ...}
+        scores = {label: round(score, 4) for label, score in zip(output['labels'], output['scores'])}
+
+        # DECISION LOGIC
+        # 1. It is toxic if the 'non_toxic' score is too low (less than 50% confidence)
+        # 2. OR if any dangerous flag (threat/hate_speech) is extremely high (> 90%)
+        is_safe = scores.get('non_toxic', 0.0) > 0.5
+        return {"is_toxic": not is_safe, "detailed_scores": scores}
+    except Exception as e:
+        # Fail-safe: don't crash the service; upstream can handle fallback behavior
+        print(f"Toxicity classification error: {e}")
+        return {"error": "classification_failed"}
