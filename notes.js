@@ -23,6 +23,7 @@ export const createComment = async (req, res) => {
     }
 };
 
+
 // run the app.py  - 
 // active the venv - source venv/bin/activate
 // uvicorn app:app --reload
@@ -33,3 +34,5 @@ curl -X POST "http://127.0.0.1:8000/predict" \
      -d '{"text": "You are stupid and I hate you"}'
 
 */
+
+// {"is_toxic":true,"detailed_scores":{"insult":0.9998,"toxicity":0.9996,"harassment":0.912,"accusation":0.6184,"threat":0.0095,"suspicion":0.0029,"non_toxic":0.0001}}
