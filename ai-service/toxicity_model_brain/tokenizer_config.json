@@ -55,5 +55,6 @@
   "split_by_punct": false,
   "tokenizer_class": "DebertaV2Tokenizer",
   "unk_token": "[UNK]",
-  "vocab_type": "spm"
+  "vocab_type": "spm",
+  "fix_mistral_regex": true
 }

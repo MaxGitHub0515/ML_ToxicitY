@@ -58,11 +58,17 @@ def predict(request: CommentRequest):
         # We zip them into a clean dictionary: {'insult': 0.99, 'threat': 0.01 ...}
         scores = {label: round(score, 4) for label, score in zip(output['labels'], output['scores'])}
 
-        # DECISION LOGIC
-        # 1. It is toxic if the 'non_toxic' score is too low (less than 50% confidence)
-        # 2. OR if any dangerous flag (threat/hate_speech) is extremely high (> 90%)
-        is_safe = scores.get('non_toxic', 0.0) > 0.5
-        return {"is_toxic": not is_safe, "detailed_scores": scores}
+        # DECISION LOGIC (threshold-based, avoids relying on 'non_toxic')
+        harassment = float(scores.get('harassment', 0.0))
+        threat = float(scores.get('threat', 0.0))
+        toxicity = float(scores.get('toxicity', 0.0))
+
+        har_th = float(os.getenv('TOXIC_HARASSMENT_TH', '0.5'))
+        thr_th = float(os.getenv('TOXIC_THREAT_TH', '0.5'))
+        tox_th = float(os.getenv('TOXIC_TOXICITY_TH', '0.8'))
+
+        is_toxic = (harassment >= har_th) or (threat >= thr_th) or (toxicity >= tox_th)
+        return {"is_toxic": is_toxic, "detailed_scores": scores}
     except Exception as e:
         # Fail-safe: don't crash the service; upstream can handle fallback behavior
         print(f"Toxicity classification error: {e}")
